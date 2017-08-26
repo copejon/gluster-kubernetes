@@ -41,7 +41,7 @@ SSH_SUDO="false"
 SSH_PORT="22"
 ADMIN_KEY=""
 USER_KEY=""
-DAEMONSET_LABEL=""
+DAEMONSET_LABEL="glusterfs"
 DEPLOY_BLOCK=1
 BLOCK_HOST_CREATE="false"
 BLOCK_HOST_SIZE=0
@@ -122,7 +122,7 @@ Options:
   --daemonset-label DAEMONSET_LABEL
               Controls the value of the label set on nodes which will host pods
               from the GlusterFS daemonset. This allows for multiple GlusterFS
-              daemonsets to run in the same cluster. Default is 'glusterfs'.
+              daemonsets to run in the same cluster. Default is '${DAEMONSET_LABEL}'.
 
   --no-block
               Don't deploy a gluster-block container. Default is to deploy.
@@ -777,9 +777,6 @@ if [[ ${EXISTS_HEKETI} -eq 0 ]]; then
 fi
 
 if [[ ${GLUSTER} -eq 1 ]] && [[ "${EXECUTOR}" == "kubernetes" ]] && [[ ${EXISTS_GLUSTERFS} -eq 0 ]] && [[ ${EXISTS_HEKETI} -eq 0 ]]; then
-  if [[ -z ${DAEMONSET_LABEL} ]]; then
-    DAEMONSET_LABEL=glusterfs
-  fi
   while read -r node; do
     debug "Marking '${node}' as a GlusterFS node."
     eval_output "${CLI} label nodes ${node} storagenode=${DAEMONSET_LABEL} --overwrite 2>&1"
