@@ -29,8 +29,8 @@
 
 - name: Pull GlusterFS Docker image
   docker_image:
-    name: gluster/gluster-centos
-    tag: latest
+    name: jarrpa/gluster-fedora-minimal
+    tag: block
 
 - name: Pull glusterblock provisioner image
   docker_image:
@@ -44,8 +44,8 @@
 
 - name: Pull heketi Docker image
   docker_image:
-    name: heketi/heketi
-    tag: dev
+    name: jarrpa/heketi
+    tag: block
 
 - name: clean up kubernetes /etc directory
   file: path=/etc/kubernetes/manifests state=absent

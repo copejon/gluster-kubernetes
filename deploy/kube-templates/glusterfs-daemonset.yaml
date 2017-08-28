@@ -20,7 +20,8 @@ spec:
         storagenode: glusterfs
       hostNetwork: true
       containers:
-      - image: gluster/gluster-centos:latest
+      #- image: jarrpa/gluster-ubuntu-minimal:latest
+      - image: jarrpa/gluster-fedora-minimal:block
         imagePullPolicy: IfNotPresent
         name: glusterfs
         env:
@@ -64,26 +65,20 @@ spec:
           privileged: true
         readinessProbe:
           timeoutSeconds: 3
-          initialDelaySeconds: 40
-          exec:
-            command:
-            - "/bin/bash"
-            - "-c"
-            - systemctl status glusterd.service
-          periodSeconds: 25
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 24007
+          periodSeconds: 10
           successThreshold: 1
-          failureThreshold: 15
+          failureThreshold: 12
         livenessProbe:
           timeoutSeconds: 3
-          initialDelaySeconds: 40
-          exec:
-            command:
-            - "/bin/bash"
-            - "-c"
-            - systemctl status glusterd.service
-          periodSeconds: 25
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 24007
+          periodSeconds: 10
           successThreshold: 1
-          failureThreshold: 15
+          failureThreshold: 12
       volumes:
       - name: glusterfs-block
         hostPath:
