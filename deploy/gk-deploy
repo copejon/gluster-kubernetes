@@ -55,7 +55,7 @@ OBJ_CAPACITY="2Gi"
 usage() {
   echo -e "USAGE: ${PROG} [-ghvy] [-c CLI] [-t <TEMPLATES>] [-n NAMESPACE] [-w <SECONDS>]
        [-s <KEYFILE>] [--ssh-user <USER>] [--ssh-port <PORT>]
-       [--admin-key <ADMIN_KEY>] [--user-key <USER_KEY>] [-l <LOG_FILE>]
+       [--admin-key <ADMIN_KEY>] [--user-key <USER_KEY>]
        [--daemonset-label <DAEMONSET_LABEL> ] [--no-block] [--block-host <SIZE>]
        [--no-object] [--object-account <ACCOUNT>] [--object-user <USER>]
        [--object-password <PASSWORD>] [--object-sc <STORAGE_CLASS>]
