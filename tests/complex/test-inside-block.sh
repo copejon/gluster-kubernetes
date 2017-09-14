@@ -2,7 +2,8 @@
 
 # test dynamic provisioning
 
-HEKETI_CLI_SERVER=$(kubectl get svc/heketi --template 'http://{{.spec.clusterIP}}:{{(index .spec.ports 0).port}}')
+CLI="${CLI:=kubectl}"
+HEKETI_CLI_SERVER=$(${CLI} get svc/heketi --template 'http://{{.spec.clusterIP}}:{{(index .spec.ports 0).port}}')
 export HEKETI_CLI_SERVER
 
 # SC
@@ -27,10 +28,10 @@ parameters:
 EOF
 
 echo "creating a storage class"
-kubectl create -f "./${SC}.yaml"
+${CLI} create -f "./${SC}.yaml"
 
 #TODO: check existence of sc
-kubectl get storageclass
+${CLI} get storageclass
 
 
 # PVC
@@ -56,12 +57,12 @@ spec:
 EOF
 
 echo "creating a PVC"
-kubectl create -f "./${PVC}.yaml"
+${CLI} create -f "./${PVC}.yaml"
 
 
 echo "verifying the pvc has been created and bound"
 s=0
-PVCstatus=$(kubectl get pvc | grep "${PVC}" | awk '{print $2}')
+PVCstatus=$(${CLI} get pvc | grep "${PVC}" | awk '{print $2}')
 while [[ "$PVCstatus" != 'Bound' ]]; do
 	if [[ ${s} -ge 30 ]]; then
 		echo "Timeout waiting for PVC"
@@ -69,7 +70,7 @@ while [[ "$PVCstatus" != 'Bound' ]]; do
         fi
 	sleep 1
         ((s+=1))
-	PVCstatus=$(kubectl get pvc | grep "${PVC}" | awk '{print $2}')
+	PVCstatus=$(${CLI} get pvc | grep "${PVC}" | awk '{print $2}')
 done
 
 
@@ -101,13 +102,13 @@ spec:
 EOF
 
 echo "creating an app for using the PVC"
-kubectl create -f "${APP}.yaml"
+${CLI} create -f "${APP}.yaml"
 
 # wait for the app to be created and have an IP
 
 echo "waiting for app pod to become available"
 s=0
-appIP=$(kubectl get pods -o wide | grep "${APP}" | awk '{print $6}')
+appIP=$(${CLI} get pods -o wide | grep "${APP}" | awk '{print $6}')
 while [[ "$appIP" == '<none>' ]] ; do
 	if [[ ${s} -ge 60 ]]; then
 		echo "Timeout waiting for pod"
@@ -115,13 +116,13 @@ while [[ "$appIP" == '<none>' ]] ; do
         fi
 	sleep 1
         ((s+=1))
-	appIP=$(kubectl get pods -o wide | grep "${APP}" | awk '{print $6}')
+	appIP=$(${CLI} get pods -o wide | grep "${APP}" | awk '{print $6}')
 done
 
 
 echo "putting content into application"
 CONTENT="Does this work? Yes! Great!!!"
-kubectl exec "${APP}" -- /bin/bash -c "echo \"${CONTENT}\" > /usr/share/nginx/html/index.html"
+${CLI} exec "${APP}" -- /bin/bash -c "echo \"${CONTENT}\" > /usr/share/nginx/html/index.html"
 
 
 echo "verifying we get back our content from the app"
@@ -132,13 +133,28 @@ if [[ "${OUTPUT}" != "${CONTENT}" ]]; then
 	exit 1
 fi
 
+echo "removing pod myapp"
+
+${CLI} delete pod "${APP}"
+s=0
+appIP=$(${CLI} get pods -o wide | grep "${APP}" | awk '{print $6}')
+while [[ "$appIP" != '' ]] ; do
+	if [[ ${s} -ge 30 ]]; then
+		echo "Timeout waiting for pod to terminate"
+		exit 1
+        fi
+	sleep 1
+        ((s+=1))
+	appIP=$(${CLI} get pods -o wide | grep "${APP}" | awk '{print $6}')
+done
+
 echo "verifying the content is actually stored on gluster"
 
-pv=$(kubectl get pvc -o wide | grep "${PVC}" | awk '{print $3}')
-pv_annotations=$(kubectl get pv ${pv} -o go-template="{{ .metadata.annotations }}")
-blockvol=$(for key in ${pv_annotations}; do echo $key | grep glusterBlockShare | cut -d: -f2 | cut -d_ -f2 | cut -d] -f1; done)
-heketi_pod=$(kubectl get po --selector=heketi=pod | grep "heketi" | awk '{print $1}')
-blockinfo=$(kubectl exec  "${heketi_pod}" -- heketi-cli -s http://localhost:8080 blockvolume info "${blockvol}")
+pv=$(${CLI} get pvc -o wide | grep "${PVC}" | awk '{print $3}')
+pv_annotations=$(${CLI} get pv "${pv}" -o go-template="{{ .metadata.annotations }}")
+blockvol=$(for key in ${pv_annotations}; do echo "${key}" | grep glusterBlockShare | cut -d: -f2 | cut -d_ -f2 | cut -d] -f1; done)
+heketi_pod=$(${CLI} get po --selector=heketi=pod | grep "heketi" | awk '{print $1}')
+blockinfo=$(${CLI} exec  "${heketi_pod}" -- heketi-cli -s http://localhost:8080 blockvolume info "${blockvol}")
 blockfile=$(echo "${blockinfo}" | grep IQN | cut -d: -f3)
 hostvol=$(echo "${blockinfo}" | grep Hosting | awk '{print $4}')
 hostnode=$(echo "${blockinfo}" | grep Hosts | cut -d\[ -f2 | cut -d] -f1)
@@ -162,23 +178,9 @@ if [[ "${BRICK_CONTENT}" != "${CONTENT}" ]]; then
 	exit 1
 fi
 
-echo "cleaning up"
-kubectl delete pod "${APP}"
+${CLI} delete pvc "${PVC}"
 s=0
-appIP=$(kubectl get pods -o wide | grep "${APP}" | awk '{print $6}')
-while [[ "$appIP" != '' ]] ; do
-	if [[ ${s} -ge 30 ]]; then
-		echo "Timeout waiting for pod to terminate"
-		exit 1
-        fi
-	sleep 1
-        ((s+=1))
-	appIP=$(kubectl get pods -o wide | grep "${APP}" | awk '{print $6}')
-done
-
-kubectl delete pvc "${PVC}"
-s=0
-PVCstatus=$(kubectl get pvc | grep "${PVC}" | awk '{print $2}')
+PVCstatus=$(${CLI} get pvc | grep "${PVC}" | awk '{print $2}')
 while [[ "$PVCstatus" != '' ]]; do
 	if [[ ${s} -ge 30 ]]; then
 		echo "Timeout waiting for PVC to terminate"
@@ -186,9 +188,9 @@ while [[ "$PVCstatus" != '' ]]; do
         fi
 	sleep 1
         ((s+=1))
-	PVCstatus=$(kubectl get pvc | grep "${PVC}" | awk '{print $2}')
+	PVCstatus=$(${CLI} get pvc | grep "${PVC}" | awk '{print $2}')
 done
 
-kubectl delete storageclass "${SC}"
+${CLI} delete storageclass "${SC}"
 
 exit 0
